@@ -100,7 +100,7 @@ class AgentState(TypedDict):
     next_step: str
  
  
-def new_state() -> AgentState:
+""" def new_state() -> AgentState:
     return AgentState(
         messages=[],
         cart=[],
@@ -109,4 +109,4 @@ def new_state() -> AgentState:
         ref_counter=0,
         pending_order=None,
         next_step="search",
-    )
+    ) """
