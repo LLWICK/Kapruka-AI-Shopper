@@ -78,7 +78,7 @@ async def build_scoped_toolsets() -> dict[str, list]:
 # literally cannot call a tool it wasn't given, so this is a hard
 # boundary, not just a prompting convention.
  
-async def example_usage():
+""" async def example_usage():
     scoped = await build_scoped_toolsets()
  
     # e.g. inside search_node:
@@ -92,4 +92,4 @@ async def example_usage():
  
  
 if __name__ == "__main__":
-    asyncio.run(example_usage())
+    asyncio.run(example_usage()) """
