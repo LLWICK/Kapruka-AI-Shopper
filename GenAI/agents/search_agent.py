@@ -24,12 +24,26 @@ from langchain_ollama import ChatOllama
 from prompts.search_agent_prompt import SEARCH_SYSTEM_PROMPT
 from tools.mcp_servers.kapruka_mcp import McpClient
 from states.search_structure import ProductSearchResponse
-
+from states.agent_state import AgentState
 load_dotenv()
 
-tools =  asyncio.run(McpClient())
+from functools import lru_cache
 
-async def main(query: str):
+_tools = None
+
+async def get_tools():
+    global _tools
+
+    if _tools is None:
+        _tools = await McpClient()
+
+    return _tools
+
+async def search_agent(state: AgentState)-> AgentState:
+
+    query = state['query']
+
+    tools = await get_tools()
     
 
     allowed_tools = {
@@ -48,11 +62,14 @@ async def main(query: str):
 
    
 
-    llm = ChatOllama(model="llama3.2")
+    #llm = ChatOllama(model="llama3.2")
+    llm = ChatGroq(model="openai/gpt-oss-120b", max_tokens=7500)
 
     llm_with_tools = llm.bind_tools(filtered_tools)
 
-    llm_structured = llm.with_structured_output(ProductSearchResponse)
+    llm_struct = ChatOllama(model="llama3.2")
+
+    llm_structured = llm_struct.with_structured_output(ProductSearchResponse)
 
   
 
@@ -62,7 +79,8 @@ async def main(query: str):
         system_prompt=(
             SEARCH_SYSTEM_PROMPT
         ),
-        response_format= ProductSearchResponse,
+        
+        
     )
 
     # Run the agent
@@ -77,27 +95,12 @@ async def main(query: str):
 
     raw_answer = result['messages'][-1].content
 
+
     structured_final_output = llm_structured.invoke(
     f"Format the following answer into the requested schema: RAW_ANSWER: {raw_answer}"
 )
-    print(structured_final_output)
-
-    """ structured_result = result.get("structured_response")
-
-    if structured_result:
-        print(structured_result.model_dump_json(indent=2))
-    else:
-        print("Structured response was not returned.")
-
-        # Debug the agent's messages and tool calls
-        for message in result["messages"]:
-            print("\nMessage type:", type(message).__name__)
-            print("Content:", message.content)
-
-            if getattr(message, "tool_calls", None):
-                print("Tool calls:", message.tool_calls) """
+    return {
+        "searchItems": structured_final_output
+    }
 
 
-if __name__ == "__main__":
-    query = "Smartwatches available in stock ?"
-    asyncio.run(main(query))

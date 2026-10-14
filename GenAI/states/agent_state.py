@@ -6,6 +6,7 @@ from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field, field_validator
+from states.search_structure import ProductSearchResponse
  
  
 # ---------------------------------------------------------------------------
@@ -79,6 +80,12 @@ class CheckoutDraft(BaseModel):
  
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
+
+    query: str
+
+    searchItems: ProductSearchResponse
+
+
  
     # cart lives here because Kapruka's MCP has no server-side cart tool
     cart: list[CartItem]

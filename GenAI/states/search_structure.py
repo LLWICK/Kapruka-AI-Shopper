@@ -10,8 +10,9 @@ class Product(BaseModel):
     currency: str = "LKR"
     in_stock: bool
     stock_level: Optional[str] = None
+    summary: str
     product_url: str
-    image_url: Optional[str] = None
+    image_url: str
 
 class ProductSearchResponse(BaseModel):
     query: str
