@@ -56,45 +56,33 @@ async def search_agent(state: AgentState)-> AgentState:
         if tool.name in allowed_tools
     ]
 
-    print("Available MCP tools:")
+    """ print("Available MCP tools:")
     for tool in filtered_tools:
-        print(tool.name, "-", tool.description)
+        print(tool.name, "-", tool.description) """
 
    
 
-    #llm = ChatOllama(model="llama3.2")
     llm = ChatGroq(model="openai/gpt-oss-120b", max_tokens=7500)
-
-    llm_with_tools = llm.bind_tools(filtered_tools)
-
-    llm_struct = ChatOllama(model="llama3.2")
-
-    llm_structured = llm_struct.with_structured_output(ProductSearchResponse)
-
-  
-
-    agent = create_agent(
-        model=llm_with_tools,
-        tools=filtered_tools,
-        system_prompt=(
-            SEARCH_SYSTEM_PROMPT
-        ),
-        
-        
+    llm_structured = ChatOllama(model="llama3.2").with_structured_output(
+        ProductSearchResponse
     )
 
-    # Run the agent
+    agent = create_agent(
+        model=llm,
+        tools=filtered_tools,
+        system_prompt=SEARCH_SYSTEM_PROMPT,
+    )
+
     result = await agent.ainvoke({
         "messages": [
             {
                 "role": "user",
-                "content": query
+                "content": query,
             }
-        ]
+        ],
     })
 
-    raw_answer = result['messages'][-1].content
-
+    raw_answer = result["messages"][-1].content
 
     structured_final_output = llm_structured.invoke(
     f"Format the following answer into the requested schema: RAW_ANSWER: {raw_answer}"

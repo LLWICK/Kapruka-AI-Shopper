@@ -81,9 +81,9 @@ class CheckoutDraft(BaseModel):
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
-    query: str
+    search_agent_output: [ProductSearchResponse]
 
-    searchItems: ProductSearchResponse
+    next_agent: str
 
 
  
