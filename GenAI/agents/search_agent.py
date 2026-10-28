@@ -25,6 +25,7 @@ from prompts.search_agent_prompt import SEARCH_SYSTEM_PROMPT
 from tools.mcp_servers.kapruka_mcp import McpClient
 from states.search_structure import ProductSearchResponse
 from states.agent_state import AgentState
+from utills.loggers import get_logger
 load_dotenv()
 
 from functools import lru_cache
@@ -40,6 +41,10 @@ async def get_tools():
     return _tools
 
 async def search_agent(state: AgentState)-> AgentState:
+
+    logger = get_logger("Search Agent")
+
+    logger.info("Executing Search Agent.......")
 
     query = state['query']
 
@@ -62,7 +67,10 @@ async def search_agent(state: AgentState)-> AgentState:
 
    
 
-    llm = ChatGroq(model="openai/gpt-oss-120b", max_tokens=7500)
+    llm = ChatGroq(model="openai/gpt-oss-120b",
+     max_tokens=2000,
+     reasoning_effort="low",
+    )
     llm_structured = ChatOllama(model="llama3.2").with_structured_output(
         ProductSearchResponse
     )
@@ -87,8 +95,9 @@ async def search_agent(state: AgentState)-> AgentState:
     structured_final_output = llm_structured.invoke(
     f"Format the following answer into the requested schema: RAW_ANSWER: {raw_answer}"
 )
+    #print(structured_final_output)
     return {
-        "searchItems": structured_final_output
+        "search_agent_output": structured_final_output
     }
 
 

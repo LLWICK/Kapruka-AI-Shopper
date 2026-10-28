@@ -9,6 +9,10 @@ app = FastAPI(title="Kapruka AI Shopper API")
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=2, max_length=1000)
+    thread_id: str = "default-session"
+
+
+    
 
 
 @app.get("/health")
@@ -16,14 +20,17 @@ async def health():
     return {"status": "ok"}
 
 
-@app.post("/search")
+@app.post("/chat")
 async def search(request: SearchRequest):
     try:
-        result = await run_workflow(request.query)
-
+        thread_id = request.thread_id
+        result = await run_workflow(request.query, thread_id)
+        
+        search = result.get("search_agent_output")
+        
         return {
             "query": request.query,
-            "products": result.get("searchItems", []),
+            "products": search.products if search else [],
         }
 
     except Exception as exc:

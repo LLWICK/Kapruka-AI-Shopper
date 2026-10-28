@@ -4,7 +4,7 @@ from typing import Optional
 
 
 class Product(BaseModel):
-    id: str                                   # needed later for cart / create_order
+    id: str                           # needed later for cart / create_order
     name: str
     price: int
     currency: str = "LKR"

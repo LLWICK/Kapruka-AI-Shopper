@@ -1,3 +1,4 @@
+
 import requests
 import streamlit as st
 
@@ -12,82 +13,39 @@ st.set_page_config(
 st.title("🛍️ Kapruka AI Shopper")
 st.caption("Your AI shopping assistant, powered by LangGraph and MCP.")
 
-# Initialize session state
-if "products" not in st.session_state:
-    st.session_state.products = []
-if "last_query" not in st.session_state:
-    st.session_state.last_query = ""
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": (
+                "Hi! 👋 Welcome to Kapruka AI Shopper. "
+                "What are you looking for today? You can search for products, "
+                "find gifts, or ask me to compare items."
+            ),
+            "products": [],
+        }
+    ]
 
-# Sidebar
-with st.sidebar:
-    st.header("About")
-    st.write(
-        "Describe what you want to buy. "
-        "The AI assistant will search for matching products."
-    )
-    st.caption("Backend: FastAPI")
-    st.caption("Agent orchestration: LangGraph")
-    st.caption("Product tools: MCP")
 
-# Search form
-with st.form("product_search", clear_on_submit=False):
-    query = st.text_input(
-        "What are you looking for?",
-        placeholder="e.g. smartwatch, birthday gift, chocolates...",
-    )
-    submitted = st.form_submit_button(
-        "🔎 Search Products",
-        type="primary",
-        use_container_width=True,
-    )
+def extract_products(data):
+    """Support common API response formats."""
+    products = data.get("products", data.get("searchItems", []))
 
-if submitted:
-    if not query.strip():
-        st.warning("Please enter a product or describe what you need.")
-    else:
-        with st.spinner("Searching Kapruka products..."):
-            try:
-                response = requests.post(
-                    f"{API_URL}/search",
-                    json={"query": query.strip()},
-                    timeout=120,
-                )
-                response.raise_for_status()
-                data = response.json()
+    if isinstance(products, dict):
+        products = products.get("products", products.get("searchItems", []))
 
-                # Adjust this mapping if your API uses another field name.
-                products = data.get("products", data.get("searchItems", []))
+    return products if isinstance(products, list) else []
 
-                if isinstance(products, dict):
-                    products = products.get("products", [])
 
-                st.session_state.products = products or []
-                st.session_state.last_query = query.strip()
+def render_products(products):
+    """Display product results as cards in the chat."""
+    if not products:
+        return
 
-                if not st.session_state.products:
-                    st.info(data.get("message", "No matching products were found."))
+    st.markdown(f"**Found {len(products)} product(s):**")
 
-            except requests.exceptions.ConnectionError:
-                st.error(
-                    "Cannot connect to the backend. "
-                    "Make sure FastAPI is running at http://127.0.0.1:8000."
-                )
-            except requests.exceptions.Timeout:
-                st.error("The search took too long. Please try again.")
-            except requests.exceptions.HTTPError as exc:
-                st.error(f"Backend returned an error: {exc}")
-                st.code(response.text)
-            except (requests.exceptions.RequestException, ValueError) as exc:
-                st.error(f"Could not complete the search: {exc}")
-
-# Results
-products = st.session_state.products
-
-if products:
-    st.subheader(f"Results for: {st.session_state.last_query}")
-    st.write(f"Found {len(products)} product(s).")
-
-    columns_per_row = 3
+    columns_per_row = 2
 
     for start in range(0, len(products), columns_per_row):
         columns = st.columns(columns_per_row)
@@ -108,8 +66,6 @@ if products:
 
                     if image_url:
                         st.image(image_url, use_container_width=True)
-                    else:
-                        st.caption("No product image available")
 
                     st.markdown(f"**{name}**")
 
@@ -124,11 +80,10 @@ if products:
                     if summary:
                         st.write(summary)
 
-                    if in_stock is not None:
-                        if in_stock:
-                            st.success("In stock")
-                        else:
-                            st.warning("Currently out of stock")
+                    if in_stock is True:
+                        st.success("In stock")
+                    elif in_stock is False:
+                        st.warning("Currently out of stock")
 
                     if product_url:
                         st.link_button(
@@ -137,8 +92,126 @@ if products:
                             use_container_width=True,
                         )
 
-elif not submitted:
-    st.info("Enter a product name above to start shopping.")
 
-st.divider()
-st.caption("Kapruka AI Shopper · Built with Streamlit, FastAPI, LangGraph and MCP")
+# Sidebar
+with st.sidebar:
+    st.header("🛍️ Kapruka AI Shopper")
+    st.write("Your personal AI shopping assistant.")
+    st.divider()
+    st.caption("Backend: FastAPI")
+    st.caption("Orchestration: LangGraph")
+    st.caption("Tools: MCP")
+
+    if st.button("🗑️ Clear conversation", use_container_width=True):
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": "Conversation cleared! What would you like to shop for?",
+                "products": [],
+            }
+        ]
+        st.rerun()
+
+
+# Display conversation history
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+        if message.get("products"):
+            render_products(message["products"])
+
+
+# Chat input
+if prompt := st.chat_input("Ask me to find a product or gift..."):
+    # Display and store the user's message
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": prompt,
+        }
+    )
+
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Query the FastAPI backend
+    with st.chat_message("assistant"):
+        with st.spinner("Searching for products..."):
+            try:
+                response = requests.post(
+                    f"{API_URL}/chat",
+                    json={"query": prompt},
+                    timeout=120,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                products = extract_products(data)
+
+                # Use the backend's message if available.
+                if data.get("answer"):
+                    answer = data["answer"]
+                elif data.get("message"):
+                    answer = data["message"]
+                elif products:
+                    answer = "Here are the products I found for you."
+                else:
+                    answer = (
+                        "I couldn't find matching products. "
+                        "Try a different search or more specific keywords."
+                    )
+
+                st.markdown(answer)
+
+                if products:
+                    render_products(products)
+
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": answer,
+                        "products": products,
+                    }
+                )
+
+            except requests.exceptions.ConnectionError:
+                error_message = (
+                    "I couldn't connect to the shopping service. "
+                    "Please check that the FastAPI backend is running."
+                )
+                st.error(error_message)
+
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
+                )
+
+            except requests.exceptions.Timeout:
+                error_message = (
+                    "The search is taking longer than expected. "
+                    "Please try again."
+                )
+                st.error(error_message)
+
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
+                )
+
+            except requests.exceptions.HTTPError as exc:
+                error_message = f"The backend returned an error: {exc}"
+                st.error(error_message)
+
+                # Show details while developing.
+                st.code(response.text)
+
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
+                )
+
+            except (requests.exceptions.RequestException, ValueError) as exc:
+                error_message = f"Something went wrong: {exc}"
+                st.error(error_message)
+
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
+                )
