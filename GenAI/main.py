@@ -7,7 +7,7 @@ from workflows.graph import run_workflow
 app = FastAPI(title="Kapruka AI Shopper API")
 
 
-class SearchRequest(BaseModel):
+class requestModel(BaseModel):
     query: str = Field(min_length=2, max_length=1000)
     thread_id: str = "default-session"
 
@@ -21,16 +21,17 @@ async def health():
 
 
 @app.post("/chat")
-async def search(request: SearchRequest):
+async def chat(request: requestModel):
     try:
         thread_id = request.thread_id
         result = await run_workflow(request.query, thread_id)
         
-        search = result.get("search_agent_output")
+        agent_response = result.get("response", {})
         
         return {
             "query": request.query,
-            "products": search.products if search else [],
+            "thread_id": thread_id,
+            **agent_response
         }
 
     except Exception as exc:

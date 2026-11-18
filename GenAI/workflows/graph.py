@@ -13,17 +13,24 @@ if parent_dir not in sys.path:
 from langgraph.checkpoint.memory import MemorySaver
 from states.agent_state import AgentState
 from agents.search_agent import search_agent
+from agents.details_agent import detail_agent
 from agents.supervisor_agent import supervisor_agent
 
 
 def choose_agent(state: AgentState) -> str:
-    intent = state.get("intent", "search")
+    intent = state.get("intent")
 
-    if intent == "compare":
-        return "compare"
+    if intent == "details":
+        return "details"
 
-    if intent == "gift":
-        return "gift"
+    if intent == "cart":
+        return "cart"
+
+    if intent == "checkout":
+        return "checkout"
+    
+    if intent == "track":
+        return "track"
 
     return "search"
 
@@ -34,6 +41,7 @@ def build_workflow():
     graph_builder = StateGraph(AgentState)
 
     graph_builder.add_node("search_agent", search_agent)
+    graph_builder.add_node("detail_agent", detail_agent)
     graph_builder.add_node("supervisor_agent", supervisor_agent)
 
     graph_builder.add_edge(START, "supervisor_agent")
@@ -43,22 +51,23 @@ def build_workflow():
     choose_agent,
     {
         "search": "search_agent",
-        #"compare": "compare",
+        "details": "detail_agent",
         #"gift": "gift",
     }
 )
 
    
     graph_builder.add_edge("search_agent", END)
+    graph_builder.add_edge("detail_agent", END)
 
     return graph_builder.compile(checkpointer=checkpoint)
 
 
-
+builder = build_workflow()
 
 
 async def run_workflow(query: str, thread_id: str) -> dict:
-    builder = build_workflow()
+    
     state = {"query": query, "messages": [query]}
     config = {"configurable": {"thread_id": thread_id}}
     return await builder.ainvoke(state, config=config)
@@ -68,7 +77,7 @@ async def run_workflow(query: str, thread_id: str) -> dict:
     import asyncio
 
     result = asyncio.run(
-        run_workflow(
+        run_workflow(    
             "What are the available birthday cakes under Rs. 7000?"
         )
     )

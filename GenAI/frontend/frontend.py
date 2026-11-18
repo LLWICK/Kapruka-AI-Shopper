@@ -1,217 +1,254 @@
 
-import requests
+import uuid
 import streamlit as st
 
-API_URL = "http://127.0.0.1:8000"
+from api import send_message
+from components import render_response
+
+
+# --------------------------------------------------
+# PAGE CONFIGURATION
+# --------------------------------------------------
 
 st.set_page_config(
     page_title="Kapruka AI Shopper",
     page_icon="🛍️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-st.title("🛍️ Kapruka AI Shopper")
-st.caption("Your AI shopping assistant, powered by LangGraph and MCP.")
 
-# Initialize chat history
+# --------------------------------------------------
+# CUSTOM CSS
+# --------------------------------------------------
+
+st.markdown("""
+<style>
+    .main-title {
+        font-size: 2rem;
+        font-weight: 750;
+        margin-bottom: 0;
+    }
+
+    .subtitle {
+        color: #888888;
+        font-size: 0.95rem;
+        margin-top: 5px;
+    }
+
+    .stChatMessage {
+        border-radius: 12px;
+    }
+
+    div[data-testid="stChatInput"] {
+        padding-bottom: 15px;
+    }
+
+    .status-text {
+        color: #888888;
+        font-size: 0.8rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+# --------------------------------------------------
+# SESSION STATE
+# --------------------------------------------------
+
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "Hi! 👋 Welcome to Kapruka AI Shopper. "
-                "What are you looking for today? You can search for products, "
-                "find gifts, or ask me to compare items."
-            ),
-            "products": [],
-        }
-    ]
+    st.session_state.messages = []
+
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
+
+if "api_error" not in st.session_state:
+    st.session_state.api_error = None
 
 
-def extract_products(data):
-    """Support common API response formats."""
-    products = data.get("products", data.get("searchItems", []))
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
 
-    if isinstance(products, dict):
-        products = products.get("products", products.get("searchItems", []))
-
-    return products if isinstance(products, list) else []
-
-
-def render_products(products):
-    """Display product results as cards in the chat."""
-    if not products:
-        return
-
-    st.markdown(f"**Found {len(products)} product(s):**")
-
-    columns_per_row = 2
-
-    for start in range(0, len(products), columns_per_row):
-        columns = st.columns(columns_per_row)
-
-        for column, product in zip(
-            columns,
-            products[start:start + columns_per_row],
-        ):
-            with column:
-                with st.container(border=True):
-                    name = product.get("name", "Unnamed product")
-                    image_url = product.get("image_url")
-                    price = product.get("price")
-                    currency = product.get("currency", "LKR")
-                    summary = product.get("summary", "")
-                    product_url = product.get("product_url")
-                    in_stock = product.get("in_stock")
-
-                    if image_url:
-                        st.image(image_url, use_container_width=True)
-
-                    st.markdown(f"**{name}**")
-
-                    if price is not None:
-                        try:
-                            formatted_price = f"{float(price):,.2f}"
-                        except (ValueError, TypeError):
-                            formatted_price = str(price)
-
-                        st.markdown(f"### {currency} {formatted_price}")
-
-                    if summary:
-                        st.write(summary)
-
-                    if in_stock is True:
-                        st.success("In stock")
-                    elif in_stock is False:
-                        st.warning("Currently out of stock")
-
-                    if product_url:
-                        st.link_button(
-                            "View on Kapruka ↗",
-                            product_url,
-                            use_container_width=True,
-                        )
-
-
-# Sidebar
 with st.sidebar:
-    st.header("🛍️ Kapruka AI Shopper")
-    st.write("Your personal AI shopping assistant.")
-    st.divider()
-    st.caption("Backend: FastAPI")
-    st.caption("Orchestration: LangGraph")
-    st.caption("Tools: MCP")
 
-    if st.button("🗑️ Clear conversation", use_container_width=True):
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "Conversation cleared! What would you like to shop for?",
-                "products": [],
-            }
-        ]
+    st.markdown("## 🛍️ Kapruka AI Shopper")
+
+    st.caption("Your intelligent shopping assistant")
+
+    st.divider()
+
+    if st.button(
+        "＋ New Conversation",
+        use_container_width=True
+    ):
+        st.session_state.messages = []
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.api_error = None
         st.rerun()
 
+    st.divider()
 
-# Display conversation history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    st.markdown("### What can I help you with?")
 
-        if message.get("products"):
-            render_products(message["products"])
+    st.markdown("""
+    - 🔍 Find products
+    - 📦 Get product information
+    - ⚖️ Compare products
+    - 🎁 Discover gift ideas
+    - 🛒 Manage your shopping cart
+    - 💳 Continue to checkout
+    - 🚚 Track your orders
+    """)
 
+    st.divider()
 
-# Chat input
-if prompt := st.chat_input("Ask me to find a product or gift..."):
-    # Display and store the user's message
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": prompt,
-        }
+    st.markdown("### Conversation")
+
+    st.caption(
+        f"Session: {st.session_state.thread_id[:8]}..."
     )
+
+    st.caption(
+        f"Messages: {len(st.session_state.messages)}"
+    )
+
+    st.markdown(
+        '<p class="status-text">Powered by Kapruka AI</p>',
+        unsafe_allow_html=True
+    )
+
+
+# --------------------------------------------------
+# HEADER
+# --------------------------------------------------
+
+st.markdown(
+    '<p class="main-title">🛍️ Kapruka AI Shopper</p>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<p class="subtitle">'
+    'Find products, explore details, compare options, '
+    'and shop through a conversational AI assistant.'
+    '</p>',
+    unsafe_allow_html=True
+)
+
+st.divider()
+
+
+# --------------------------------------------------
+# WELCOME SCREEN
+# --------------------------------------------------
+
+if not st.session_state.messages:
+
+    st.markdown("### Hello! What are you looking for today?")
+
+    st.write(
+        "I'm your Kapruka shopping assistant. "
+        "Tell me what you need, and I'll help you find it."
+    )
+
+    suggestions = [
+        "Find birthday cakes under Rs. 7,000",
+        "Recommend a gift for my father",
+        "Show me popular electronic gadgets",
+        "Find flowers for a birthday",
+    ]
+
+    cols = st.columns(2)
+
+    for index, suggestion in enumerate(suggestions):
+
+        with cols[index % 2]:
+
+            if st.button(
+                suggestion,
+                key=f"suggestion_{index}",
+                use_container_width=True
+            ):
+                st.session_state.pending_prompt = suggestion
+                st.rerun()
+
+
+# --------------------------------------------------
+# DISPLAY CONVERSATION HISTORY
+# --------------------------------------------------
+
+for message in st.session_state.messages:
+
+    with st.chat_message(message["role"]):
+
+        if message["role"] == "user":
+            st.markdown(message["content"])
+
+        else:
+            render_response(message["content"])
+
+
+# --------------------------------------------------
+# CHAT INPUT
+# --------------------------------------------------
+
+prompt = st.chat_input(
+    "Ask me to find a product, compare items, or get more details..."
+)
+
+# Support suggested prompts.
+if not prompt and "pending_prompt" in st.session_state:
+    prompt = st.session_state.pop("pending_prompt")
+
+
+# --------------------------------------------------
+# PROCESS USER MESSAGE
+# --------------------------------------------------
+
+if prompt:
+
+    # Add user message to the UI history.
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
 
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Query the FastAPI backend
+    # Call FastAPI.
     with st.chat_message("assistant"):
-        with st.spinner("Searching for products..."):
+
+        with st.spinner("Kapruka AI is thinking..."):
+
             try:
-                response = requests.post(
-                    f"{API_URL}/chat",
-                    json={"query": prompt},
-                    timeout=120,
+                result = send_message(
+                    query=prompt,
+                    thread_id=st.session_state.thread_id
                 )
-                response.raise_for_status()
-                data = response.json()
 
-                products = extract_products(data)
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": result
+                })
 
-                # Use the backend's message if available.
-                if data.get("answer"):
-                    answer = data["answer"]
-                elif data.get("message"):
-                    answer = data["message"]
-                elif products:
-                    answer = "Here are the products I found for you."
-                else:
-                    answer = (
-                        "I couldn't find matching products. "
-                        "Try a different search or more specific keywords."
-                    )
+                render_response(result)
 
-                st.markdown(answer)
+            except Exception as exc:
 
-                if products:
-                    render_products(products)
+                error_message = str(exc)
 
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": answer,
-                        "products": products,
+                st.error(error_message)
+
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": {
+                        "answer": (
+                            "Sorry, I couldn't process your request. "
+                            "Please try again."
+                        )
                     }
-                )
+                })
 
-            except requests.exceptions.ConnectionError:
-                error_message = (
-                    "I couldn't connect to the shopping service. "
-                    "Please check that the FastAPI backend is running."
-                )
-                st.error(error_message)
-
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_message}
-                )
-
-            except requests.exceptions.Timeout:
-                error_message = (
-                    "The search is taking longer than expected. "
-                    "Please try again."
-                )
-                st.error(error_message)
-
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_message}
-                )
-
-            except requests.exceptions.HTTPError as exc:
-                error_message = f"The backend returned an error: {exc}"
-                st.error(error_message)
-
-                # Show details while developing.
-                st.code(response.text)
-
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_message}
-                )
-
-            except (requests.exceptions.RequestException, ValueError) as exc:
-                error_message = f"Something went wrong: {exc}"
-                st.error(error_message)
-
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_message}
-                )
+    st.rerun()

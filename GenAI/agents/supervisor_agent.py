@@ -11,21 +11,22 @@ sys.path.append(parent_dir)
 
 
 from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 from prompts.supervisor_agent_prompt import ROUTER_PROMPT
 from utills.loggers import get_logger
 
 
-router_llm = ChatGroq(
+""" router_llm = ChatGroq(
     model="openai/gpt-oss-120b",
-    temperature=0,
-    max_tokens=10,
-)
+) """
+
+router_llm = ChatOllama(model="llama3.2")
 
 
 
 
-VALID_INTENTS = {"search", "compare", "gift", "other"}
+VALID_INTENTS = {"search", "details", "cart", "checkout", "track", "chat"}
 
 
 async def supervisor_agent(state: dict) -> dict:
@@ -41,9 +42,37 @@ async def supervisor_agent(state: dict) -> dict:
         logger.info("Supervisor agent path : other")
         return {"intent": "other"}
 
+    history = state.get("messages", [])
+    recent_history = "\n".join(
+        f"{msg.type}: {msg.content}"
+        for msg in history[-8:]
+    )
+
+    search_output = state.get("search_agent_output") or {}
+    if hasattr(search_output, "model_dump"):
+        search_output = search_output.model_dump()
+
+    products = search_output.get("products", [])
+
+    router_input = f"""
+        Previous conversation:
+        {recent_history}
+
+        Previously retrieved products:
+        {products}
+
+        Latest customer message:
+        {query}
+
+        Classify only the latest customer message.
+        """
+
+    
+
+
     response = await router_llm.ainvoke([
         SystemMessage(content=ROUTER_PROMPT),
-        HumanMessage(content=query),
+        HumanMessage(content=router_input),
     ])
 
     # Handle text responses and defensively normalize the result.

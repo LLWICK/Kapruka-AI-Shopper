@@ -26,6 +26,7 @@ from tools.mcp_servers.kapruka_mcp import McpClient
 from states.search_structure import ProductSearchResponse
 from states.agent_state import AgentState
 from utills.loggers import get_logger
+from langchain_core.messages import AIMessage
 load_dotenv()
 
 from functools import lru_cache
@@ -93,11 +94,22 @@ async def search_agent(state: AgentState)-> AgentState:
     raw_answer = result["messages"][-1].content
 
     structured_final_output = llm_structured.invoke(
-    f"Format the following answer into the requested schema: RAW_ANSWER: {raw_answer}"
+    f"Format the following answer into the requested schema. Deeply analyze the RAW_ANSWER to extract the necessary information: RAW_ANSWER: {raw_answer}"
 )
-    #print(structured_final_output)
+    payload = (
+        structured_final_output.model_dump()
+        if hasattr(structured_final_output, "model_dump")
+        else structured_final_output
+    )
+    message = (
+        structured_final_output.message
+        if getattr(structured_final_output, "message", None)
+        else str(payload)
+    )
     return {
-        "search_agent_output": structured_final_output
+        "search_agent_output": payload,
+        "response": payload,
+        "messages": [AIMessage(content=message)],
     }
 
 

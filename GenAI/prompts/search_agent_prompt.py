@@ -41,7 +41,7 @@ in-stock products. Prefer true for general availability searches.
 
 
 
-example format (This is only example  format ) - 
+strictly follow the bellow directory format for your output (This is only example  format ) - 
 
 
 {
@@ -71,7 +71,7 @@ example format (This is only example  format ) -
     }
   ],
   "total_results": 2,
-  "message": "Only matching products returned by the search tool are included."
+  "message": "Include follow up question or a message to the user if needed"
 }
 
 """

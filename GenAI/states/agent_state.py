@@ -83,32 +83,28 @@ class AgentState(TypedDict):
 
     query: str
 
-    search_agent_output: [ProductSearchResponse]
+    response: dict
+
+    search_agent_output: ProductSearchResponse
 
     intent: str
 
     next_agent: str
 
+    ref_map: dict                             # "3" -> product dict; a ref always means the same product
+    cart: list                                # [{ref, product_id, name, price, currency, quantity, icing_text}]
+    checkout: dict                            # flat dict of details collected so far
+    delivery_ok: bool                         # city+date verified for the CURRENT cart + details
+    awaiting_confirmation: bool               # summary shown, waiting for an explicit "yes"
+    delivery_fee: Optional[float]
+    pending_order: Optional[dict]             # checkout_url / order_ref / expires_at after create_order
+    card_url: Optional[str]                   # options-card image for the last search
+    shown: list                               # products shown this search turn, each with its `ref`
+    reply: str   
+
 
  
-    # cart lives here because Kapruka's MCP has no server-side cart tool
-    cart: list[CartItem]
- 
-    # checkout fields collected incrementally; None until user provides them
-    checkout: CheckoutDraft
- 
-    # last product ids surfaced to the user, so "add the second one" resolves
-    last_search_results: list[str]
- 
-    # ref numbers already used in kapruka_render_options_card this conversation —
-    # monotonic, never reused, per Kapruka's stated contract
-    ref_counter: int
- 
-    # set once kapruka_create_order succeeds, holds checkout_url / order_ref
-    pending_order: Optional[dict]
- 
-    # which node should run next — set by the router node
-    next_step: str
+    
  
  
 """ def new_state() -> AgentState:
