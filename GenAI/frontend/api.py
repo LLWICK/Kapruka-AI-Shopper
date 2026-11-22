@@ -8,12 +8,13 @@ API_BASE_URL = os.getenv(
 )
 
 
-def send_message(query: str, thread_id: str) -> dict:
+def send_message(query: str, thread_id: str, selected_product_id: str | None = None) -> dict:
     url = f"{API_BASE_URL}/chat"
 
     payload = {
         "query": query,
         "thread_id": thread_id,
+        "selected_product_id": selected_product_id
     }
 
     try:

@@ -17,112 +17,99 @@ def get_value(data, *keys, default=None):
 
 
 def render_products(products):
+
     if not products:
         return
 
-    st.markdown("### 🛍️ Products")
+    st.markdown("### 🛍️ Products found")
 
     for start in range(0, len(products), 2):
+
         cols = st.columns(2)
 
         for col, product in zip(cols, products[start:start + 2]):
-            if not isinstance(product, dict):
+
+            product_id = str(product.get("product_id", ""))
+
+            if not product_id:
                 continue
 
+            name = product.get(
+                "name",
+                product.get("title", "Product")
+            )
+
+            price = product.get(
+                "price",
+                product.get("displayed_price", "Price unavailable")
+            )
+
+            image = product.get(
+                "image_url",
+                product.get("image")
+            )
+
+            product_url = product.get(
+                "product_url",
+                product.get("url")
+            )
+
             with col:
-                name = get_value(
-                    product,
-                    "name",
-                    "title",
-                    "product_name",
-                    default="Product"
-                )
-
-                price = get_value(
-                    product,
-                    "price",
-                    "displayed_price",
-                    "selling_price",
-                    default=None
-                )
-
-                image = get_value(
-                    product,
-                    "image",
-                    "image_url",
-                    "product_image",
-                    default=None
-                )
-
-                product_url = get_value(
-                    product,
-                    "product_url",
-                    "url",
-                    "link",
-                    default=None
-                )
-
-                product_id = get_value(
-                    product,
-                    "product_id",
-                    "id",
-                    default=None
-                )
 
                 with st.container(border=True):
+
                     if image:
-                        st.image(image, use_container_width=True)
+                        st.image(
+                            image,
+                            use_container_width=True
+                        )
 
                     st.markdown(f"**{name}**")
-
-                    if price is not None:
-                        st.markdown(f"**Price:** Rs. {price}")
-
-                    if product_id:
-                        st.caption(f"Product ID: {product_id}")
-
-                    description = get_value(
-                        product,
-                        "description",
-                        "short_description",
-                        default=None
-                    )
-
-                    if description:
-                        st.caption(str(description))
+                    st.markdown(f"**Rs. {price}**")
 
                     if product_url:
                         st.link_button(
-                            "View Product",
+                            "View on Kapruka",
                             product_url,
                             use_container_width=True
                         )
 
+                    selected_id = st.session_state.get(
+                        "selected_product_id"
+                    )
 
-def render_comparison(comparison):
-    if not comparison:
-        return
+                    if selected_id == product_id:
+                        st.success("Selected product")
 
-    st.markdown("### ⚖️ Product Comparison")
+                    # Product details action
+                    if st.button(
+                        "🔍 Ask about this product",
+                        key=f"details_{product_id}",
+                        use_container_width=True
+                    ):
 
-    if isinstance(comparison, list):
-        st.dataframe(
-            comparison,
-            use_container_width=True,
-            hide_index=True
-        )
+                        st.session_state.selected_product_id = product_id
 
-    elif isinstance(comparison, dict):
-        rows = comparison.get("rows")
+                        st.session_state.pending_prompt = (
+                            f"Tell me more about {name}."
+                        )
 
-        if isinstance(rows, list):
-            st.dataframe(
-                rows,
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.json(comparison)
+                        st.rerun()
+
+                    # Add to cart action
+                    if st.button(
+                        "🛒 Add to Cart",
+                        key=f"cart_{product_id}",
+                        use_container_width=True
+                    ):
+
+                        st.session_state.selected_product_id = product_id
+
+                        st.session_state.pending_prompt = (
+                            "Add this selected product to my cart."
+                        )
+
+                        st.rerun()
 
 
 def render_cart(cart):

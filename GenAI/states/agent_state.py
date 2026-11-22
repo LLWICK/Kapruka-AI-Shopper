@@ -1,12 +1,15 @@
 from __future__ import annotations
  
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, Any
 from typing_extensions import TypedDict
  
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field, field_validator
 from states.search_structure import ProductSearchResponse
+from states.product_schema import Product
+from states.cartItem_Structure import CartItem
+from states.delivery_structure import DeliverySchema
  
  
 # ---------------------------------------------------------------------------
@@ -85,14 +88,39 @@ class AgentState(TypedDict):
 
     response: dict
 
+
+    #product search
     search_agent_output: ProductSearchResponse
+    last_search_results: list[Product]
 
     intent: str
 
     next_agent: str
 
+    # Product selection
+    selected_product: dict
+    selected_product_id: str
+
+    cart: list  [CartItem]  
+
+    #delivery information
+    delivery_details: DeliverySchema 
+
+
+    #sender information
+    recipient: Optional[dict[str, Any]]
+    sender: Optional[dict[str, Any]]
+    gift_message: Optional[str]
+    currency: str
+
+    # Checkout
+    checkout_confirmed: bool
+    checkout_result: Optional[dict[str, Any]]
+
+    
+
     ref_map: dict                             # "3" -> product dict; a ref always means the same product
-    cart: list                                # [{ref, product_id, name, price, currency, quantity, icing_text}]
+                          # [{ref, product_id, name, price, currency, quantity, icing_text}]
     checkout: dict                            # flat dict of details collected so far
     delivery_ok: bool                         # city+date verified for the CURRENT cart + details
     awaiting_confirmation: bool               # summary shown, waiting for an explicit "yes"

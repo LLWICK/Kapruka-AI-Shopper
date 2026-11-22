@@ -49,12 +49,39 @@ async def detail_agent(state: AgentState)-> AgentState:
 
     query = state['query']
 
-    search_output = state.get("search_agent_output", {})
+    products = state.get("last_search_results", [])
 
-    if hasattr(search_output, "model_dump"):
-        search_output = search_output.model_dump()
+    selected_product_id = state.get("selected_product_id")
 
-    products = search_output.get("products", [])
+    
+    
+
+    selected_product = next(
+        (
+            product for product in products
+            if str(product.get("id")) == str(selected_product_id)
+        ),
+        None
+    )
+
+    print(selected_product)
+
+    
+
+    if not selected_product:
+        return {
+            "response": {
+                "message": (
+                    "Please select a product first, "
+                    "so I can retrieve the correct information."
+                ),
+                "agent": "detail_agent"
+            }
+        }
+
+    # Use the selected product's actual ID.
+    product_id = selected_product["id"]
+
 
     
 
@@ -71,9 +98,6 @@ async def detail_agent(state: AgentState)-> AgentState:
         if tool.name in allowed_tools
     ]
 
-    """ print("Available MCP tools:")
-    for tool in filtered_tools:
-        print(tool.name, "-", tool.description) """
 
    
 
@@ -95,7 +119,7 @@ async def detail_agent(state: AgentState)-> AgentState:
         "messages": [
             {
                 "role": "user",
-                "content": f"USER QUERY - {query}  PRODUCTS - {products}",
+                "content": f"USER QUERY - {query}  SELECTED PRODUCT ID - {product_id}",
             }
         ],
     })

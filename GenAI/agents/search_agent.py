@@ -106,8 +106,11 @@ async def search_agent(state: AgentState)-> AgentState:
         if getattr(structured_final_output, "message", None)
         else str(payload)
     )
+
+    
     return {
         "search_agent_output": payload,
+        "last_search_results": payload.get("products", []),
         "response": payload,
         "messages": [AIMessage(content=message)],
     }

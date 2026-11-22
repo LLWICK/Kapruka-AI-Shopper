@@ -11,9 +11,11 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import HumanMessage
 from states.agent_state import AgentState
 from agents.search_agent import search_agent
 from agents.details_agent import detail_agent
+from agents.cart_agent import cart_agent
 from agents.supervisor_agent import supervisor_agent
 
 
@@ -43,6 +45,7 @@ def build_workflow():
     graph_builder.add_node("search_agent", search_agent)
     graph_builder.add_node("detail_agent", detail_agent)
     graph_builder.add_node("supervisor_agent", supervisor_agent)
+    graph_builder.add_node("cart_agent", cart_agent)
 
     graph_builder.add_edge(START, "supervisor_agent")
 
@@ -52,13 +55,14 @@ def build_workflow():
     {
         "search": "search_agent",
         "details": "detail_agent",
-        #"gift": "gift",
+        "cart": "cart_agent"
     }
 )
 
    
     graph_builder.add_edge("search_agent", END)
     graph_builder.add_edge("detail_agent", END)
+    graph_builder.add_edge("cart_agent", END)
 
     return graph_builder.compile(checkpointer=checkpoint)
 
@@ -66,11 +70,15 @@ def build_workflow():
 builder = build_workflow()
 
 
-async def run_workflow(query: str, thread_id: str) -> dict:
+async def run_workflow(query: str, thread_id: str, selected_product_id: str | None = None) -> dict:
     
-    state = {"query": query, "messages": [query]}
+    initial_state = {"query": query,
+     "messages": [HumanMessage(content=query)],
+      "selected_product_id": selected_product_id,}
+
     config = {"configurable": {"thread_id": thread_id}}
-    return await builder.ainvoke(state, config=config)
+
+    return await builder.ainvoke(initial_state, config=config)
 
 
 """ if __name__ == "__main__":
