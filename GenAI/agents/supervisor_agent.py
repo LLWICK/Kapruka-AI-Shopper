@@ -54,6 +54,8 @@ async def supervisor_agent(state: dict) -> dict:
 
     products = search_output.get("products", [])
 
+    cart=state.get("cart", [])
+
     router_input = f"""
         Previous conversation:
         {recent_history}
@@ -63,6 +65,9 @@ async def supervisor_agent(state: dict) -> dict:
 
         Latest customer message:
         {query}
+
+        current customer cart:
+        {cart}
 
         Classify only the latest customer message.
         """

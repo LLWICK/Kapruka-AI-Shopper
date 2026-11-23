@@ -53,34 +53,35 @@ async def detail_agent(state: AgentState)-> AgentState:
 
     selected_product_id = state.get("selected_product_id")
 
-    
-    
+    resolution = state.get("product_resolution", {})
 
-    selected_product = next(
-        (
-            product for product in products
-            if str(product.get("id")) == str(selected_product_id)
-        ),
-        None
-    )
-
-    print(selected_product)
-
-    
-
-    if not selected_product:
+    if resolution.get("status") != "resolved":
         return {
             "response": {
                 "message": (
-                    "Please select a product first, "
-                    "so I can retrieve the correct information."
+                    resolution.get("clarification_question")
+                    or resolution.get("reason")
+                    or "Please specify which product you mean."
                 ),
                 "agent": "detail_agent"
             }
         }
 
+    
+    
+
+    selected_product = state.get("selected_product")
+
+    if not selected_product:
+        return {
+            "response": {
+                "message": "I couldn't retrieve the selected product.",
+                "agent": "detail_agent"
+            }
+        }
+
     # Use the selected product's actual ID.
-    product_id = selected_product["id"]
+    product_id = str(selected_product["id"])
 
 
     

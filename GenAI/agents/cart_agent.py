@@ -10,28 +10,36 @@ async def cart_agent(state: AgentState) -> dict:
 
     products = state.get("last_search_results", [])
     selected_product_id = state.get("selected_product_id")
-    cart = list(state.get("cart", []))
+    
+    cart = list(state.get("cart", [])) 
 
-    selected_product = next(
-        (
-            product for product in products
-            if str(product.get("product_id")) == str(selected_product_id)
-        ),
-        None
-    )
+    
 
-    if not selected_product:
+    resolution = state.get("product_resolution", {})
+
+    if resolution.get("status") != "resolved":
         return {
             "response": {
                 "message": (
-                    "I couldn't identify that product. "
-                    "Please search for it again."
+                    resolution.get("clarification_question")
+                    or resolution.get("reason")
+                    or "Please specify which product you mean."
                 ),
                 "agent": "cart_agent"
             }
         }
 
-    product_id = str(selected_product["product_id"])
+    selected_product = state.get("selected_product")
+
+    if not selected_product:
+        return {
+            "response": {
+                "message": "I couldn't identify the requested product.",
+                "agent": "cart_agent"
+            }
+        }
+
+    product_id = str(selected_product["id"])
 
     # Extract the price from trusted backend search data.
     price = selected_product.get("price")

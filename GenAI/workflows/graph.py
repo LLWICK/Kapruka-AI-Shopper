@@ -16,6 +16,7 @@ from states.agent_state import AgentState
 from agents.search_agent import search_agent
 from agents.details_agent import detail_agent
 from agents.cart_agent import cart_agent
+from agents.product_resolver_agent import product_resolver_agent
 from agents.supervisor_agent import supervisor_agent
 
 
@@ -23,10 +24,13 @@ def choose_agent(state: AgentState) -> str:
     intent = state.get("intent")
 
     if intent == "details":
-        return "details"
+        return "product_resolver"
 
     if intent == "cart":
-        return "cart"
+        if state.get("cart_action") == "view":
+            return "cart_agent"
+            
+        return "product_resolver"
 
     if intent == "checkout":
         return "checkout"
@@ -35,6 +39,22 @@ def choose_agent(state: AgentState) -> str:
         return "track"
 
     return "search"
+
+
+def route_after_product_resolution(state):
+
+    resolution = state.get("product_resolution", {})
+
+    if resolution.get("status") != "resolved":
+        return "end"
+
+    if state.get("intent") == "details":
+        return "detail_agent"
+
+    if state.get("intent") == "cart":
+        return "cart_agent"
+
+    return "end"
 
 
 def build_workflow():
@@ -46,6 +66,7 @@ def build_workflow():
     graph_builder.add_node("detail_agent", detail_agent)
     graph_builder.add_node("supervisor_agent", supervisor_agent)
     graph_builder.add_node("cart_agent", cart_agent)
+    graph_builder.add_node("product_resolver", product_resolver_agent)
 
     graph_builder.add_edge(START, "supervisor_agent")
 
@@ -54,8 +75,19 @@ def build_workflow():
     choose_agent,
     {
         "search": "search_agent",
+        "product_resolver": "product_resolver",
         "details": "detail_agent",
         "cart": "cart_agent"
+    }
+)
+
+    graph_builder.add_conditional_edges(
+    "product_resolver",
+    route_after_product_resolution,
+    {
+        "detail_agent": "detail_agent",
+        "cart_agent": "cart_agent",
+        "end": END,
     }
 )
 
