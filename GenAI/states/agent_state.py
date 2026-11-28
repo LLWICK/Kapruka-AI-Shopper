@@ -38,10 +38,21 @@ class AgentState(TypedDict):
     selected_product: dict
     selected_product_id: str
 
-    cart: list  [CartItem]  
+    #cart
+    cart: list  [CartItem]
+    cart_action: Optional[
+        Literal["add", "remove", "update", "view"]
+    ]
+    cart_quantity: Optional[int]
 
     #delivery information
-    delivery_details: DeliverySchema 
+    delivery_details: DeliverySchema
+    delivery_validated: bool
+    delivery_validation: Optional[dict[str, Any]]
+    delivery_error: Optional[str]
+    delivery_fee: Optional[float]
+    delivery_type: Optional[Literal["standard", "economy"]]
+    delivery_confirmed: bool
 
 
     #sender information

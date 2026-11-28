@@ -15,13 +15,33 @@ chat     - greeting, thanks, or a general question that is none of the above
 also mention a number in passing. If they're asking a QUESTION about a specific item already on
 screen, it's details.
 
+CART ACTION CLASSIFICATION:
+
+If intent is cart, identify the requested operation:
+
+- add: Add a product to the cart.
+- remove: Remove a product from the cart.
+- update: Change the quantity of an existing cart item.
+- view: Display the current cart.
+
+Examples:
+"Add two cakes" -> cart_action = add
+"Remove the chocolate cake" -> cart_action = remove
+"Change its quantity to 3" -> cart_action = update
+"Show my cart" -> cart_action = view
+
+If intent is not cart, cart_action must be null.
+
 Use the selected product context and conversation history
 to understand references such as "this product" and "it".
 
-Return ONLY one label:
+Return ONLY one label for intent:
 "search", "details", "cart", "checkout", "track", "chat"
 
-Do not provide explanations or additional text.
+and Return ONLY one label for cart_action:
+"add", "remove", "update", "view", null
+
+Do not provide explanations or additional text rather than "intent" and "cart_action".
 
 "
 

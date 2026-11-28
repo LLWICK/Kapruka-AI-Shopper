@@ -22,15 +22,19 @@ from agents.supervisor_agent import supervisor_agent
 
 def choose_agent(state: AgentState) -> str:
     intent = state.get("intent")
+    cart_action = state.get("cart_action")
 
     if intent == "details":
         return "product_resolver"
 
     if intent == "cart":
-        if state.get("cart_action") == "view":
-            return "cart_agent"
-            
-        return "product_resolver"
+        if cart_action == "view":
+            return "cart"
+
+        if cart_action in {"add", "remove", "update"}:
+            return "product_resolver"
+        return "cart"
+
 
     if intent == "checkout":
         return "checkout"

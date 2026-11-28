@@ -14,6 +14,7 @@ from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 from prompts.supervisor_agent_prompt import ROUTER_PROMPT
+from states.supervisor_structure import SupervisorOutput
 from utills.loggers import get_logger
 
 
@@ -21,7 +22,9 @@ from utills.loggers import get_logger
     model="openai/gpt-oss-120b",
 ) """
 
-router_llm = ChatOllama(model="llama3.2")
+router_llm = ChatOllama(model="llama3.2").with_structured_output(
+    SupervisorOutput
+)
 
 
 
@@ -81,16 +84,18 @@ async def supervisor_agent(state: dict) -> dict:
     ])
 
     # Handle text responses and defensively normalize the result.
-    content = response.content
-    if not isinstance(content, str):
+    cart_action = response.cart_action
+    intent = response.intent
+    """ if not isinstance(content, str):
         content = str(content)
 
-    intent = content.strip().lower().strip("`'\". \n")
+    intent = content.strip().lower().strip("`'\". \n") """
 
     if intent not in VALID_INTENTS:
         # Safe fallback if the model returns unexpected output.
         intent = "search"
 
 
-    logger.info("Supervisor agent path : %s" , intent)
-    return {"intent": intent}
+    logger.info("Supervisor agent path : %s || cart state: %s" , intent,cart_action)
+    return {"intent": intent,
+        "cart_action": cart_action}
